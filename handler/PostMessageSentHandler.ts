@@ -6,6 +6,7 @@ import { AppSetting, DefaultMessage } from '../config/Settings';
 import { DialogflowRequestType, IDialogflowMessage } from '../enum/Dialogflow';
 import { Logs } from '../enum/Logs';
 import { Dialogflow } from '../lib/Dialogflow';
+import { DialogflowExt } from '../lib/DialogflowExtension';
 import { createDialogflowMessage, createMessage } from '../lib/Message';
 import { getAppSettingValue } from '../lib/Settings';
 import { incFallbackIntent, resetFallbackIntent } from '../lib/SynchronousHandover';
@@ -48,7 +49,12 @@ export class PostMessageSentHandler {
 
         let response: IDialogflowMessage;
         try {
-            response = (await Dialogflow.sendRequest(this.http, this.read, this.modify, rid, text, DialogflowRequestType.MESSAGE));
+
+            if(text.trim() == "get")
+                response = (await DialogflowExt.sendRequest(this.http, this.read, this.modify, rid, text, DialogflowRequestType.MESSAGE));
+            else
+                response = (await Dialogflow.sendRequest(this.http, this.read, this.modify, rid, text, DialogflowRequestType.MESSAGE));
+        
         } catch (error) {
             this.app.getLogger().error(`${Logs.DIALOGFLOW_REST_API_ERROR} ${error.message}`);
 

@@ -10,8 +10,8 @@ import { createHttpRequest } from './Http';
 import { updateRoomCustomFields } from './Room';
 import { getAppSettingValue } from './Settings';
 
-class DialogflowClass {
-    private jwtExpiration: Date;
+export class DialogflowClass {
+    protected jwtExpiration: Date;
     public async sendRequest(http: IHttp,
                              read: IRead,
                              modify: IModify,
@@ -127,7 +127,7 @@ class DialogflowClass {
         }
     }
 
-    private async getServerURL(read: IRead, modify: IModify, http: IHttp, sessionId: string) {
+    protected async getServerURL(read: IRead, modify: IModify, http: IHttp, sessionId: string) {
         const projectId = await getAppSettingValue(read, AppSetting.DialogflowProjectId);
 
         const accessToken = await this.getAccessToken(read, modify, http, sessionId);
@@ -136,7 +136,7 @@ class DialogflowClass {
         return `https://dialogflow.googleapis.com/v2/projects/${projectId}/agent/environments/draft/users/-/sessions/${sessionId}:detectIntent?access_token=${accessToken}`;
     }
 
-    private async getAccessToken(read: IRead, modify: IModify, http: IHttp, sessionId: string) {
+    protected async getAccessToken(read: IRead, modify: IModify, http: IHttp, sessionId: string) {
 
         const clientEmail = await getAppSettingValue(read, AppSetting.DialogflowClientEmail);
         const privateKey = await getAppSettingValue(read, AppSetting.DialogFlowPrivateKey);
@@ -170,12 +170,12 @@ class DialogflowClass {
         }
     }
 
-    private hasExpired(expiration: Date): boolean {
+    protected hasExpired(expiration: Date): boolean {
         if (!expiration) { return true; }
         return Date.now() >= expiration.getTime();
     }
 
-    private getJWT(clientEmail, privateKey) {
+    protected getJWT(clientEmail, privateKey) {
         // request format
         // {Base64url encoded header}.{Base64url encoded claim set}.{Base64url encoded signature}
 
@@ -187,12 +187,12 @@ class DialogflowClass {
     }
 
     // Forming the JWT header
-    private getJWTHeader() {
+    protected getJWTHeader() {
         return base64urlEncode(DialogflowJWT.JWT_HEADER);
     }
 
     // Forming the jwt claim set
-    private getClaimSet(clientEmail) {
+    protected getClaimSet(clientEmail) {
 
         let currentUnixTime = Date.now();
         const hourInc = 1000 * 60 * 30; // an hour
@@ -215,7 +215,7 @@ class DialogflowClass {
         return base64urlEncode(JSON.stringify(jwtClaimSet));
     }
 
-    private getSignature(b64uHeader: string, b64uClaimSetClaimSet: string, privateKey) {
+    protected getSignature(b64uHeader: string, b64uClaimSetClaimSet: string, privateKey) {
         const signatureInput = `${b64uHeader}.${b64uClaimSetClaimSet}`;
         const sign = createSign(DialogflowJWT.SHA_256);
         sign.update(signatureInput);
