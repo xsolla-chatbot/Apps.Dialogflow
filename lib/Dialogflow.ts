@@ -12,12 +12,14 @@ import { getAppSettingValue } from './Settings';
 
 export class DialogflowClass {
     protected jwtExpiration: Date;
-    public async sendRequest(http: IHttp,
+    public async sendRequest(
+                            http: IHttp,
                              read: IRead,
                              modify: IModify,
                              sessionId: string,
                              request: IDialogflowEvent | string,
-                             requestType: DialogflowRequestType): Promise<IDialogflowMessage> {
+                             requestType: DialogflowRequestType,
+                             visitorToken: string = ""): Promise<IDialogflowMessage> {
         const serverURL = await this.getServerURL(read, modify, http, sessionId);
 
         const queryInput = {

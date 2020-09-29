@@ -51,7 +51,11 @@ export const performHandover = async (modify: IModify, read: IRead, rid: string,
     if (!room) { throw new Error(Logs.INVALID_ROOM_ID); }
 
     const visitor: IVisitor = (await read.getLivechatReader().getLivechatVisitorByToken(visitorToken)) as IVisitor;
+    
     if (!visitor) { throw new Error(Logs.INVALID_VISITOR_TOKEN); }
+
+    //CRITICAL
+    modify.getUpdater().getLivechatUpdater().setCustomFields(visitorToken, "handovered", "ne-ne-handovered", true);
 
     const livechatTransferData: ILivechatTransferData = {
         currentRoom: room,

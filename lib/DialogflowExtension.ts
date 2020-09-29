@@ -1,70 +1,51 @@
 import { IHttp, IHttpRequest, IModify, IRead } from '@rocket.chat/apps-engine/definition/accessors';
-import { IDialogflowEvent, DialogflowRequestType, IDialogflowMessage, LanguageCode, IDialogflowQuickReplies } from '../enum/Dialogflow';
+import { IDialogflowEvent, DialogflowRequestType, IDialogflowMessage, LanguageCode, IDialogflowQuickReplies, ENTITY_OVERRIDE_MODE_ } from '../enum/Dialogflow';
 import { Logs } from '../enum/Logs';
 import { Headers } from '../enum/Http';
 import { DialogflowClass } from './Dialogflow';
+import { performHandover, updateRoomCustomFields } from './Room';
+import { ILivechatRoom, IVisitor } from '@rocket.chat/apps-engine/definition/livechat';
 import { createHttpRequest } from './Http';
-import { getAppSettingValue } from './Settings';
-import { AppSetting } from '../config/Settings';
+
 
 class DialogflowExtClass extends DialogflowClass {
-    public async sendRequest(http: IHttp,
-            read: IRead,
-            modify: IModify,
-            sessionId: string,
-            request: IDialogflowEvent | string,
-            requestType: DialogflowRequestType): Promise<IDialogflowMessage> {
-                
+    public async sendRequest(
+        http: IHttp,
+         read: IRead,
+         modify: IModify,
+         sessionId: string,
+         request: IDialogflowEvent | string,
+         requestType: DialogflowRequestType,
+         visitorToken: string = ""): Promise<IDialogflowMessage> {
         const serverURL = await this.getServerURL(read, modify, http, sessionId);
-
 
         const queryInput = {
             ...requestType === DialogflowRequestType.EVENT && { event: request },
             ...requestType === DialogflowRequestType.MESSAGE && { text: { languageCode: LanguageCode.EN, text: request } },
         };
 
-        let message : IDialogflowMessage = {
-            isFallback: false,
-        };
+        const httpRequestContent: IHttpRequest = createHttpRequest(
+            { 'Content-Type': Headers.CONTENT_TYPE_JSON, 'Accept': Headers.ACCEPT_JSON },
+            { queryInput },
+        );
 
-        const accessToken = await this.getAccessToken(read, modify, http, sessionId);
-        if (!accessToken) { throw Error(Logs.ACCESS_TOKEN_ERROR); }
-
-        const headers = 
-        { 'Content-Type': Headers.CONTENT_TYPE_JSON, 
-                'Accept': Headers.ACCEPT_JSON,
-                'Authorization': 'Bearer ' + accessToken }
-        
-
-        let httpRequestContent: IHttpRequest = {
-            headers: {
-                ...headers
-            }
-        };
-
-        let response;
         try {
-            response = await http.get(serverURL, httpRequestContent);
-            
-            
-
-            const messages: Array<string | IDialogflowQuickReplies> = [];
-            messages.push(response.content);
-            message.messages = messages;
-
-            return message;
+            const response = await http.post(serverURL, httpRequestContent);
+            this.executeHandover(response.data, read, modify, sessionId, visitorToken);
+            return this.parseRequest(response.data);
         } catch (error) {
             throw new Error(`${ Logs.HTTP_REQUEST_ERROR }`);
         }
     }
 
-    protected async getServerURL(read: IRead, modify: IModify, http: IHttp, sessionId: string) {
-        const projectId = await getAppSettingValue(read, AppSetting.DialogflowProjectId);
+    private async executeHandover(response: any, read: IRead, modify: IModify, sessionId: string, token: string) {
+        if (!response) { throw new Error(Logs.INVALID_RESPONSE_FROM_DIALOGFLOW_CONTENT_UNDEFINED); }
 
-        const accessToken = await this.getAccessToken(read, modify, http, sessionId);
-        if (!accessToken) { throw Error(Logs.ACCESS_TOKEN_ERROR); }
-
-        return `https://dialogflow.googleapis.com/v2/projects/${projectId}/agent/entityTypes?key=AIzaSyD8lFAVFJfg9cfZfCdMWGTzp4pqfP4_0aE`;
+        const { queryResult: { parameters: { handover } } } = response;
+        
+        if(handover) {
+            performHandover(modify, read, sessionId, token, handover);
+        }
     }
 }
 

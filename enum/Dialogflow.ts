@@ -32,7 +32,7 @@ export enum QuickReplyContentType {
     TEXT = 'text',
 }
 
-export enum DialogflowUrl {
+export enum DialogflowUrl { 
     AUTHENTICATION_SERVER_URL = 'https://oauth2.googleapis.com/token',
 }
 
@@ -56,4 +56,10 @@ export enum LanguageCode {
 export enum DialogflowRequestType {
     MESSAGE = 'message',
     EVENT = 'event',
+}
+
+export enum ENTITY_OVERRIDE_MODE_{
+    UNSPECIFIED,
+    OVERRIDE,
+    SUPPLEMENT
 }
