@@ -54,9 +54,6 @@ export const performHandover = async (modify: IModify, read: IRead, rid: string,
     
     if (!visitor) { throw new Error(Logs.INVALID_VISITOR_TOKEN); }
 
-    //CRITICAL
-    modify.getUpdater().getLivechatUpdater().setCustomFields(visitorToken, "handovered", "ne-ne-handovered", true);
-
     const livechatTransferData: ILivechatTransferData = {
         currentRoom: room,
     };

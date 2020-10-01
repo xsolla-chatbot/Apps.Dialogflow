@@ -50,7 +50,13 @@ export class PostMessageSentHandler {
 
         let response: IDialogflowMessage;
         try {
-            response = (await DialogflowExt.sendRequest(this.http, this.read, this.modify, rid, text, DialogflowRequestType.MESSAGE, token));
+            
+            if(text[0] == '/') {
+                response = (await DialogflowExt.executeCommand(this.http, this.read, this.modify, rid, text.slice(1).trim(), token));
+            }
+            else {
+                response = (await DialogflowExt.sendRequest(this.http, this.read, this.modify, rid, text, DialogflowRequestType.MESSAGE, token));
+            }
         } catch (error) {
             this.app.getLogger().error(`${Logs.DIALOGFLOW_REST_API_ERROR} ${error.message}`);
 
