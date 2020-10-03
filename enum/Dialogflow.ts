@@ -63,3 +63,8 @@ export enum ENTITY_OVERRIDE_MODE_{
     OVERRIDE,
     SUPPLEMENT
 }
+
+export enum DialogflowDataTransfer {
+    BEGIN = '------------------------\nUSER HAS DATA: ',
+    END = '\n-------------------------'
+}
