@@ -7,7 +7,3 @@ export enum Headers {
 export enum Response {
     SUCCESS = 'Your request was processed successfully',
 }
-
-export enum Request {
-    GET_CUSTOM_FIELDS = 'http://localhost:3000/api/v1/livechat/custom-fields'
-}

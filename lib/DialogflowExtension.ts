@@ -32,6 +32,8 @@ class DialogflowExtClass extends DialogflowClass {
 
         try {
             const response = await http.post(serverURL, httpRequestContent);
+
+            //do all functions
             this.doAsync(response.data, read, modify, http, sessionId, visitorToken);
             return this.parseRequest(response.data);
         } catch (error) {
@@ -39,7 +41,7 @@ class DialogflowExtClass extends DialogflowClass {
         }
     }
 
-    public async sendRequestExt(
+    public async doRequest(
         http: IHttp,
          read: IRead,
          modify: IModify,
@@ -54,11 +56,15 @@ class DialogflowExtClass extends DialogflowClass {
         if (!room) { throw new Error(Logs.INVALID_ROOM_ID); }
 
         const { customFields } = room;
+        
         if (!customFields) {
             const welcome: IDialogflowEvent = {
                 name: 'Welcome',
                 languageCode: LanguageCode.EN
             }
+
+            //transfer custom fields data to dialogflow (in first message)
+            await this.dialogflowDataTransfer(read, modify, http, sessionId, visitorToken);
 
             // Checks if this is the first message
             const message = await Dialogflow.sendRequest(http, read, modify, sessionId, welcome, DialogflowRequestType.EVENT);
@@ -86,7 +92,6 @@ class DialogflowExtClass extends DialogflowClass {
         await this.fillCustomFields(response, read, modify, token);
         //check is need execute handover
         this.executeHandover(response, read, modify, sessionId, token);
-        this.dialogflowDataTransfer(read, modify, http, sessionId, token);
     }
 
     private async executeHandover(response: any, read: IRead, modify: IModify, sessionId: string, token: string) {
@@ -162,36 +167,9 @@ class DialogflowExtClass extends DialogflowClass {
 
         message += DialogflowDataTransfer.END + '';
 
-        Dialogflow.sendRequest(http, read, modify, sessionId, message, DialogflowRequestType.MESSAGE);
+        await Dialogflow.sendRequest(http, read, modify, sessionId, message, DialogflowRequestType.MESSAGE);
     }
       
-
-    public async executeCommand(http: IHttp,
-        read: IRead,
-        modify: IModify,
-        sessionId: string,
-        request: IDialogflowEvent | string,
-        token: string = "") {
-
-        let message : IDialogflowMessage = {
-            isFallback: false
-        };
-
-        if(request == "getVI") {
-            message = await this.prepeareMessage(JSON.stringify(await this.getVisitorInfo(read, token)));
-        }
-
-        if(request == "getAT") {
-        	message = await this.prepeareMessage(JSON.stringify(await this.getAccessToken(read, modify, http, sessionId)));
-        }
-
-        if(request == "getRF") {
-            message = await this.prepeareMessage(JSON.stringify(await this.getRoomFields(read, sessionId))); 
-        }
-
-        return message;
-    }
-
     private async getVisitorInfo(read: IRead, token: string) {
         const visitor = await read.getLivechatReader().getLivechatVisitorByToken(token);
         if(!visitor) {throw new Error(Logs.INVALID_VISITOR_TOKEN); }
@@ -199,28 +177,6 @@ class DialogflowExtClass extends DialogflowClass {
 
         return visitor.livechatData;
     } 
-
-    private async getRoomFields(read: IRead, sessionId: string) {
-        const room: IRoom = await read.getRoomReader().getById(sessionId) as IRoom;
-        if (!room) { throw new Error(Logs.INVALID_ROOM_ID); }
-
-        const { customFields } = room;
-
-        return customFields;
-    }
-
-    private async prepeareMessage(m: string): Promise<IDialogflowMessage> {
-        const message : IDialogflowMessage = {
-            isFallback: false
-        }
-
-        let messages: Array<string | IDialogflowQuickReplies> = [];
-        messages.push(m);
-
-        message.messages = messages;
-
-        return message;
-    }
 }
 
 export const DialogflowExt = new DialogflowExtClass();
