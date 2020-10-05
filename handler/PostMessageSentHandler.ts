@@ -50,7 +50,7 @@ export class PostMessageSentHandler {
 
         let response: IDialogflowMessage;
         try {
-            response = (await DialogflowExt.doRequest(this.http, this.read, this.modify, rid, text, DialogflowRequestType.MESSAGE, token));
+            response = (await DialogflowExt.doRequest(this.http, this.read, this.modify, rid, text, token));
         } catch (error) {
             this.app.getLogger().error(`${Logs.DIALOGFLOW_REST_API_ERROR} ${error.message}`);
 

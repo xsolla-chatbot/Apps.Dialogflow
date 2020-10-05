@@ -9,45 +9,12 @@ import { IRoom } from '@rocket.chat/apps-engine/definition/rooms';
 
 
 class DialogflowExtClass extends DialogflowClass {
-    public async sendRequest(
-        http: IHttp,
-         read: IRead,
-         modify: IModify,
-         sessionId: string,
-         request: IDialogflowEvent | string,
-         requestType: DialogflowRequestType,
-         visitorToken: string = ""): Promise<IDialogflowMessage> {
-
-        const serverURL = await this.getServerURL(read, modify, http, sessionId);
-
-        const queryInput = {
-            ...requestType === DialogflowRequestType.EVENT && { event: request },
-            ...requestType === DialogflowRequestType.MESSAGE && { text: { languageCode: LanguageCode.EN, text: request } },
-        };
-
-        const httpRequestContent: IHttpRequest = createHttpRequest(
-            { 'Content-Type': Headers.CONTENT_TYPE_JSON, 'Accept': Headers.ACCEPT_JSON },
-            { queryInput },
-        );
-
-        try {
-            const response = await http.post(serverURL, httpRequestContent);
-
-            //do all functions
-            this.doAsync(response.data, read, modify, http, sessionId, visitorToken);
-            return this.parseRequest(response.data);
-        } catch (error) {
-            throw new Error(`${ Logs.HTTP_REQUEST_ERROR }`);
-        }
-    }
-
     public async doRequest(
         http: IHttp,
          read: IRead,
          modify: IModify,
          sessionId: string,
          request: IDialogflowEvent | string,
-         requestType: DialogflowRequestType,
          visitorToken: string = ""): Promise<IDialogflowMessage> {
 
         let messages: Array<string | IDialogflowQuickReplies> = [];
@@ -86,12 +53,44 @@ class DialogflowExtClass extends DialogflowClass {
         return message;
     }
 
+    public async sendRequest(
+        http: IHttp,
+         read: IRead,
+         modify: IModify,
+         sessionId: string,
+         request: IDialogflowEvent | string,
+         requestType: DialogflowRequestType,
+         visitorToken: string = ""): Promise<IDialogflowMessage> {
+
+        const serverURL = await this.getServerURL(read, modify, http, sessionId);
+
+        const queryInput = {
+            ...requestType === DialogflowRequestType.EVENT && { event: request },
+            ...requestType === DialogflowRequestType.MESSAGE && { text: { languageCode: LanguageCode.EN, text: request } },
+        };
+
+        const httpRequestContent: IHttpRequest = createHttpRequest(
+            { 'Content-Type': Headers.CONTENT_TYPE_JSON, 'Accept': Headers.ACCEPT_JSON },
+            { queryInput },
+        );
+
+        try {
+            const response = await http.post(serverURL, httpRequestContent);
+
+            //do all functions
+            await this.doAsync(response.data, read, modify, http, sessionId, visitorToken);
+            return this.parseRequest(response.data);
+        } catch (error) {
+            throw new Error(`${ Logs.HTTP_REQUEST_ERROR }`);
+        }
+    }
+
     private async doAsync(response: any, read: IRead, modify: IModify, http: IHttp, sessionId: string, token: string) {
         if (!response) { throw new Error(Logs.INVALID_RESPONSE_FROM_DIALOGFLOW_CONTENT_UNDEFINED); }
         //fill visitor custom fields in livechat room
         await this.fillCustomFields(response, read, modify, token);
         //check is need execute handover
-        this.executeHandover(response, read, modify, sessionId, token);
+        await this.executeHandover(response, read, modify, sessionId, token);
     }
 
     private async executeHandover(response: any, read: IRead, modify: IModify, sessionId: string, token: string) {
@@ -103,31 +102,25 @@ class DialogflowExtClass extends DialogflowClass {
         const { handover } = parameters;
         
         if(handover) {
-            performHandover(modify, read, sessionId, token, handover);
+            await performHandover(modify, read, sessionId, token, handover);
         }
     }
 
     private async fillCustomFields(response: any, read: IRead, modify: IModify, token: string) {
-        const vInfo = await this.getVisitorInfo(read, token);
-
-        if(!vInfo) 
-            return;
-            
         const liveChatUpdater = modify.getUpdater().getLivechatUpdater();
 
         const { queryResult: { parameters } } = response;
 
-        try {
-            if(parameters) {
-                for(let key in parameters) {
-                    if(vInfo[key] != undefined) {
-                        liveChatUpdater.setCustomFields(token, key, parameters[key], true);
-                    }
+        if(parameters) {
+            for(let key in parameters) {
+                try {
+                    await liveChatUpdater.setCustomFields(token, key, parameters[key], true);
+                }
+                catch(error) {
+                    //throw new Error(Logs.INVALID_RESPONSE_FROM_DIALOGFLOW);
+                    continue;
                 }
             }
-        }
-        catch(error) {
-            throw new Error(Logs.INVALID_RESPONSE_FROM_DIALOGFLOW);
         }
     }
 
